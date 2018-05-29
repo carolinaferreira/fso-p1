@@ -9,7 +9,7 @@
 
 #define GRID_W 9
 #define GRID_H 9
-
+#define BLOCK_OFFSET 3
 extern int errno;
 
 int SUM_THREAD = 0;
@@ -20,6 +20,7 @@ pthread_mutex_t GRID_MUTEX[GRID_H][GRID_W];
 
 pthread_t LINE_THREAD[GRID_W];
 pthread_t COLUMN_THREAD[GRID_H];
+pthread_t BLOCK_THREAD[GRID_H];
 
 void print_grid(){
     int height, width;
@@ -141,6 +142,43 @@ void *check_column(void *arg){
     pthread_exit((void*) 0);
 }
 
+void *check_block(void *arg){
+    int *array = init_array(GRID_H+1);
+
+    int counter, counter2;
+    int sum = 0;
+    long *values = (long*) arg;
+    long line =  values[0];
+    long column = values[1];
+
+    for(counter = (int) line; counter < line + BLOCK_OFFSET ; counter++ ){
+        for(counter2 = (int) column; counter2 < column + BLOCK_OFFSET ; counter2++ ){
+            pthread_mutex_lock (&GRID_MUTEX[counter][counter2]);
+            unsigned short grid_copy = GRID[counter][counter2];
+            pthread_mutex_unlock (&GRID_MUTEX[counter][counter2]);
+            
+            if(array[grid_copy] == 0){
+                sum++;
+            }
+
+            array[grid_copy]++;
+        }
+
+    }
+
+    if(sum == GRID_H){
+      printf("Bloco %lu %lu eh valido\n", line, column);
+      pthread_mutex_lock (&SUM_THREAD_MUTEX);
+      SUM_THREAD++;
+      pthread_mutex_unlock (&SUM_THREAD_MUTEX);
+    }else{
+      printf("Bloco %lu %lu nao eh valido\n", line, column);
+    }
+
+    free(array);
+    pthread_exit((void*) 0);
+}
+
 int main(int argc, char * argv[]){
     FILE * file_arg = NULL;
 
@@ -165,20 +203,30 @@ int main(int argc, char * argv[]){
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     long counter;
+    long counter2;
+    
+    for(counter = 0; counter < GRID_W; counter++) {
+      pthread_create(&COLUMN_THREAD[counter], &attr, check_column, (void *)counter);
+    }
 
     for(counter = 0; counter < GRID_H; counter++) {
       pthread_create(&LINE_THREAD[counter], &attr, check_line, (void *)counter);
     }
 
-    for(counter = 0; counter < GRID_H; counter++) {
-      pthread_create(&COLUMN_THREAD[counter], &attr, check_column, (void *)counter);
+    for(counter = 0; counter < GRID_H; counter+=BLOCK_OFFSET){
+        for(counter2 = 0; counter2 < GRID_W; counter2+=BLOCK_OFFSET){
+            long position[2] = {counter, counter2};
+            pthread_create(&BLOCK_THREAD[counter+counter2], &attr, check_block, (void *)position);
+            
+            printf("matriz: %lu %lu\n", counter, counter2);
+        }
     }
-
     void* status;
 
     for(counter = 0; counter < GRID_H; counter++) {
       pthread_join(LINE_THREAD[counter], &status);
       pthread_join(COLUMN_THREAD[counter], &status);
+      pthread_join(BLOCK_THREAD[counter], &status);
     }
 
     printf("\nAQUI ESTA O RESULTADO: %d\n", SUM_THREAD);
