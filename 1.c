@@ -12,12 +12,14 @@
 
 extern int errno;
 
-unsigned short GRID[GRID_H][GRID_W];
 int SUM_THREAD = 0;
-pthread_mutex_t GRID_MUTEX[GRID_H][GRID_W];
 pthread_mutex_t SUM_THREAD_MUTEX;
 
+unsigned short GRID[GRID_H][GRID_W];
+pthread_mutex_t GRID_MUTEX[GRID_H][GRID_W];
+
 pthread_t LINE_THREAD[GRID_W];
+pthread_t COLUMN_THREAD[GRID_H];
 
 void print_grid(){
     int height, width;
@@ -38,7 +40,6 @@ void load_grid(FILE * file){
         for(width = 0; width < GRID_W; width++){
             int number = 0;
             fscanf(file, "%d", &number);
-            printf("Reading: %d\n", number);
             GRID[height][width] = number;
         }
     }
@@ -69,6 +70,12 @@ void destroy_mutexes(){
 int *init_array(int size){
   int *a;
   a = (int*) malloc (size*sizeof(int));
+
+  int counter;
+  for(counter = 0; counter < size; counter++){
+      a[counter] = 0;
+  }
+  
   return a;
 }
 
@@ -77,8 +84,6 @@ void *check_line(void *arg){
     int counter;
     int sum = 0;
     long line = (long) arg;
-
-    printf("ESTOU LENDO CHECK LINE: %lu\n", line);
 
     for(counter = 0; counter < GRID_W ; counter++ ){
         pthread_mutex_lock (&GRID_MUTEX[line][counter]);
@@ -93,12 +98,43 @@ void *check_line(void *arg){
     }
 
     if(sum == GRID_W){
-      printf("e valido %lu\n", line);
+      printf("Linha %lu eh valida\n", line);
       pthread_mutex_lock (&SUM_THREAD_MUTEX);
       SUM_THREAD++;
       pthread_mutex_unlock (&SUM_THREAD_MUTEX);
     }else{
-      printf("nao e valido %lu\n", line);
+      printf("Linha %lu nao eh valida\n", line);
+    }
+
+    free(array);
+    pthread_exit((void*) 0);
+}
+
+void *check_column(void *arg){
+    int *array = init_array(GRID_H+1);
+    int counter;
+    int sum = 0;
+    long column = (long) arg;
+
+    for(counter = 0; counter < GRID_H ; counter++ ){
+        pthread_mutex_lock (&GRID_MUTEX[counter][column]);
+        unsigned short grid_copy = GRID[counter][column];
+        pthread_mutex_unlock (&GRID_MUTEX[counter][column]);
+
+        if(array[grid_copy] == 0){
+          sum++;
+        }
+
+        array[grid_copy]++;
+    }
+
+    if(sum == GRID_H){
+      printf("Coluna %lu eh valida\n", column);
+      pthread_mutex_lock (&SUM_THREAD_MUTEX);
+      SUM_THREAD++;
+      pthread_mutex_unlock (&SUM_THREAD_MUTEX);
+    }else{
+      printf("Coluna %lu nao eh valida\n", column);
     }
 
     free(array);
@@ -134,10 +170,15 @@ int main(int argc, char * argv[]){
       pthread_create(&LINE_THREAD[counter], &attr, check_line, (void *)counter);
     }
 
+    for(counter = 0; counter < GRID_H; counter++) {
+      pthread_create(&COLUMN_THREAD[counter], &attr, check_column, (void *)counter);
+    }
+
     void* status;
 
     for(counter = 0; counter < GRID_H; counter++) {
       pthread_join(LINE_THREAD[counter], &status);
+      pthread_join(COLUMN_THREAD[counter], &status);
     }
 
     printf("\nAQUI ESTA O RESULTADO: %d\n", SUM_THREAD);
