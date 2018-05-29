@@ -1,4 +1,4 @@
-/* 
+/*
     1: gcc -Wall -ansi -lpthread 1.c
     2: ./a.out test1.txt
 */
@@ -13,7 +13,7 @@
 extern int errno;
 
 unsigned short GRID[GRID_H][GRID_W];
-unsigned short SUM_THREAD = 0;
+int SUM_THREAD = 0;
 pthread_mutex_t GRID_MUTEX[GRID_H][GRID_W];
 pthread_mutex_t SUM_THREAD_MUTEX;
 
@@ -62,6 +62,38 @@ void destroy_grid_mutex(){
     }
 }
 
+int *init_array(int size){
+  int *a;
+  a = (int*) malloc (size*sizeof(int));
+  return a;
+}
+
+void check_line(int line){
+    int *array = init_array(GRID_W+1);
+    int counter;
+    int sum = 0;
+
+    for(counter = 0; counter < GRID_W ; counter++ ){
+        pthread_mutex_lock (&GRID_MUTEX[line][counter]);
+        unsigned short grid_copy = GRID[line][counter];
+        pthread_mutex_unlock (&GRID_MUTEX[line][counter]);
+
+        if(array[grid_copy] == 0){
+          sum++;
+        }
+
+        array[grid_copy]++;
+    }
+
+    if(sum == GRID_W){
+      pthread_mutex_lock (&SUM_THREAD_MUTEX);
+      SUM_THREAD++;
+      pthread_mutex_unlock (&SUM_THREAD_MUTEX);
+    }
+
+    free(array);
+}
+
 int main(int argc, char * argv[]){
     FILE * file_arg = NULL;
 
@@ -82,6 +114,10 @@ int main(int argc, char * argv[]){
     destroy_grid_mutex();
     pthread_mutex_init(&SUM_THREAD_MUTEX, NULL);
     pthread_mutex_destroy(&SUM_THREAD_MUTEX);
+
+    check_line(0);
+
+    printf("\nAQUI ESTA O RESULTADO: %d\n", SUM_THREAD);
 
     fclose(file_arg);
     return 0;
