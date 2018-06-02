@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#include "queue.h"
+
 #define NUM_STUDENTS 3
 #define MAX_CHAIRS (int) (NUM_STUDENTS/2)
 
@@ -15,24 +17,30 @@ pthread_t AE;
 sem_t SEM_AE_STATE;
 sem_t SEM_STUDENTS;
 
+
+pthread_mutex_t mutex_queue_access;
+struct Queue * chairs_queue;
 pthread_mutex_t mutex_free_chairs;
 
 int free_chairs = MAX_CHAIRS;
 
 void * ae_func(void* arg){
-  int counter = 0;
-  while( counter < NUM_STUDENTS*3){
+  int helps_given = 0;
+  while(helps_given < NUM_STUDENTS*3){
     int random_time = (rand()%5)+1;
 
+    /* AE is waiting for a student to signal - WAKE UP */
     printf("AE DORMINDO\n");
     sem_wait(&SEM_STUDENTS);
     printf("AE ACORDOU\n");
+
+    /* AE is checking for a student */
     pthread_mutex_lock(&mutex_free_chairs);
     free_chairs++;
     sem_post(&SEM_AE_STATE);
     pthread_mutex_unlock(&mutex_free_chairs);
     printf("AJUDANDO\n");
-    counter++;
+    helps_given++;
     sleep(random_time);
   }
   pthread_exit((void*) 0);
@@ -44,18 +52,24 @@ void * student_func(void* arg){
 
   while(helps < 3){
     int random_time = (rand()%5)+1;
-    printf("estudante %lu programando\n", thread);
 
+    /* Simulates student's work and asking for help */
+    printf("estudante %lu programando\n", thread);
     sleep(random_time);
     printf("estudante %lu procurando AE\n", thread);
 
+    /* Students is checking chair availability */
     pthread_mutex_lock(&mutex_free_chairs);
 
+    /* In this case, AE is sleeping */
     if(free_chairs == MAX_CHAIRS){
-      free_chairs--;
+      /* Wake the AE */
       sem_post(&SEM_STUDENTS);
-      pthread_mutex_unlock(&mutex_free_chairs);
       printf("estudante %lu acordou AE\n", thread);
+
+      /* Free chair variable is no more needed */
+      pthread_mutex_unlock(&mutex_free_chairs);
+      
       sem_wait(&SEM_AE_STATE);
       printf("%lu: RECEBENDO AJUDA\n", thread);
       helps++;
@@ -89,6 +103,8 @@ int main(int argc, char * argv[]){
   sem_init (&SEM_STUDENTS, 0, 0);
 
   pthread_mutex_init(&mutex_free_chairs, NULL);
+  pthread_mutex_init(&mutex_queue_access, NULL);
+  chairs_queue = create_queue();
 
   pthread_create(&AE, &attr, ae_func, NULL);
   long counter;
@@ -110,6 +126,11 @@ int main(int argc, char * argv[]){
 
   pthread_attr_destroy(&attr);
   pthread_mutex_destroy(&mutex_free_chairs);
+  pthread_mutex_destroy(&mutex_queue_access);
+
+  clear_queue(chairs_queue);
+  free(chairs_queue);
+
   sem_destroy (&SEM_AE_STATE);
   sem_destroy (&SEM_STUDENTS);
   pthread_exit(NULL);
