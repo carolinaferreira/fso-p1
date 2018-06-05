@@ -1,5 +1,5 @@
 /*
-    1: gcc -Wall -ansi -lpthread 1.c
+    1: gcc -Wall -ansi -O2 1.c -lpthread
     2: ./a.out test1.txt
 */
 #include <stdio.h>
@@ -10,6 +10,7 @@
 #define GRID_W 9
 #define GRID_H 9
 #define BLOCK_OFFSET 3
+#define EXPECTED_SUM (GRID_W * BLOCK_OFFSET)
 extern int errno;
 
 int SUM_THREAD = 0;
@@ -93,18 +94,20 @@ void *check_line(void *arg){
 
         if(array[grid_copy] == 0){
           sum++;
+        } else {
+            printf("LINHA (%lu): %hu duplicado em [%d]!\n", line, grid_copy, counter);
         }
 
         array[grid_copy]++;
     }
 
     if(sum == GRID_W){
-      printf("Linha %lu eh valida\n", line);
+      printf("LINHA (%lu): Valida!\n", line);
       pthread_mutex_lock (&SUM_THREAD_MUTEX);
       SUM_THREAD++;
       pthread_mutex_unlock (&SUM_THREAD_MUTEX);
     }else{
-      printf("Linha %lu nao eh valida\n", line);
+      printf("LINHA (%lu): Invalida!\n", line);
     }
 
     free(array);
@@ -123,19 +126,21 @@ void *check_column(void *arg){
         pthread_mutex_unlock (&GRID_MUTEX[counter][column]);
 
         if(array[grid_copy] == 0){
-          sum++;
+            sum++;
+        } else {
+            printf("COLUNA (%lu): %hu duplicado em [%d]!\n", column, grid_copy, counter);
         }
 
         array[grid_copy]++;
     }
 
     if(sum == GRID_H){
-      printf("Coluna %lu eh valida\n", column);
+      printf("COLUNA (%lu): Valida!\n", column);
       pthread_mutex_lock (&SUM_THREAD_MUTEX);
       SUM_THREAD++;
       pthread_mutex_unlock (&SUM_THREAD_MUTEX);
     }else{
-      printf("Coluna %lu nao eh valida\n", column);
+      printf("COLUNA (%lu): Invalida!\n", column);
     }
 
     free(array);
@@ -151,6 +156,8 @@ void *check_block(void *arg){
     long line =  values[0];
     long column = values[1];
 
+    printf("BLOCK CHECKER: %lu %lu\n", line, column);
+
     for(counter = (int) line; counter < line + BLOCK_OFFSET ; counter++ ){
         for(counter2 = (int) column; counter2 < column + BLOCK_OFFSET ; counter2++ ){
             pthread_mutex_lock (&GRID_MUTEX[counter][counter2]);
@@ -159,6 +166,9 @@ void *check_block(void *arg){
             
             if(array[grid_copy] == 0){
                 sum++;
+            } else {
+                printf("BLOCO (%lu %lu): %hu duplicado em [%d][%d]!\n",
+                    line, column, grid_copy, counter, counter2);
             }
 
             array[grid_copy]++;
@@ -167,12 +177,12 @@ void *check_block(void *arg){
     }
 
     if(sum == GRID_H){
-      printf("Bloco %lu %lu eh valido\n", line, column);
+      printf("BLOCO (%lu %lu): Valido!\n", line, column);
       pthread_mutex_lock (&SUM_THREAD_MUTEX);
       SUM_THREAD++;
       pthread_mutex_unlock (&SUM_THREAD_MUTEX);
     }else{
-      printf("Bloco %lu %lu nao eh valido\n", line, column);
+      printf("BLOCO (%lu %lu): Invalido!\n", line, column);
     }
 
     free(array);
@@ -192,16 +202,18 @@ int main(int argc, char * argv[]){
         /*print_grid();*/
     } else {
         perror("Aconteceu um erro");
+        return -1;
     }
 
     /* Initializing mutex */
     init_mutexes();
 
-    /*PTHREAD initialization*/
+    /* PTHREAD initialization */
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    /* Creates all the needed threads */
     long counter;
     long counter2;
     
@@ -215,21 +227,28 @@ int main(int argc, char * argv[]){
 
     for(counter = 0; counter < GRID_H; counter+=BLOCK_OFFSET){
         for(counter2 = 0; counter2 < GRID_W; counter2+=BLOCK_OFFSET){
-            long position[2] = {counter, counter2};
+            long * position = (long *) malloc(sizeof(long) * 2);
+            position[0] = counter;
+            position[1] = counter2;
             pthread_create(&BLOCK_THREAD[counter+counter2], &attr, check_block, (void *)position);
-            
-            printf("matriz: %lu %lu\n", counter, counter2);
         }
     }
-    void* status;
 
+    /* Waits for all threads to finish */
+    void* status;
     for(counter = 0; counter < GRID_H; counter++) {
       pthread_join(LINE_THREAD[counter], &status);
       pthread_join(COLUMN_THREAD[counter], &status);
       pthread_join(BLOCK_THREAD[counter], &status);
     }
 
-    printf("\nAQUI ESTA O RESULTADO: %d\n", SUM_THREAD);
+    /* Checking result after all threads modified the SUM_THREAD variable */
+    if(SUM_THREAD == EXPECTED_SUM){
+        printf("\n\nMAIN: O sudoku (%s) eh valido!\n", argv[1]);
+    } else {
+        printf("\n\nMAIN: O sudoku (%s) eh invalido!\n", argv[1]);
+        printf("MAIN: Contagem errada -> %d\n", SUM_THREAD);
+    }
 
     fclose(file_arg);
 

@@ -1,4 +1,4 @@
-/* gcc -Wall -ansi -std=c99 2.c -lm -lrt -pthread */
+/* gcc -Wall -std=c99 -O2 2.c -lm -lrt -pthread */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,7 +16,7 @@
 
 int MAX_CHAIRS = 0;
 int NUM_STUDENTS = 0;
-int CHAIRS = 0;
+double CHAIRS = 0;
 int AE_PLANNED_HELPS = 0;
 
 sem_t SEM_AE_HELPING;
@@ -142,7 +142,13 @@ void * student_func(void* arg){
 };
 
 void initilize_random(){
-  NUM_STUDENTS = (rand() % (MAX_STUDENTS + 1 - MIN_STUDENTS)) + MIN_STUDENTS;;
+  NUM_STUDENTS = (rand() % (MAX_STUDENTS + 1 - MIN_STUDENTS)) + MIN_STUDENTS;
+  CHAIRS =  (NUM_STUDENTS / 2.0);
+  AE_PLANNED_HELPS = (NUM_STUDENTS * MAX_HELPS);
+}
+
+void initialize_fixed(){
+  NUM_STUDENTS = 5;
   CHAIRS =  (NUM_STUDENTS / 2.0);
   AE_PLANNED_HELPS = (NUM_STUDENTS * MAX_HELPS);
 }
@@ -161,20 +167,23 @@ int main(int argc, char * argv[]){
   sem_init(&SEM_STUDENT_LEAVING, 0, 0);
   sem_init(&SEM_STUDENT_READY, 0, 0);
 
-  /* Random seed config */
+  /* Random seed and student number initialization */
   srand(time(NULL));
-  initilize_random();
+  // initilize_random();
+  initialize_fixed();
   MAX_CHAIRS = (int) round(CHAIRS);
-  printf("MAIN: MAX_CHAIRS %d\n", MAX_CHAIRS);
+  
   printf("MAIN: NUM_STUDENTS %d\n", NUM_STUDENTS);
-  pthread_t STUDENTS[NUM_STUDENTS];
-  pthread_t AE;
+  printf("MAIN: MAX_CHAIRS %d\n", MAX_CHAIRS);
 
   /* Queue initialization */
   pthread_mutex_init(&mutex_queue_access, NULL);
   chairs_queue = create_queue();
 
   /* Creating pthreads - AE and Students */
+  pthread_t AE;
+  pthread_t STUDENTS[NUM_STUDENTS];
+
   pthread_create(&AE, &attr, ae_func, NULL);
   long counter;
 

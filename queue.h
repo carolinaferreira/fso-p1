@@ -89,12 +89,10 @@ void clear_queue(struct Queue * q){
 void print_queue(struct Queue * q){
     int counter = 0;
     struct Node * actual = q->front;
-    printf("FILA: ");
-    printf(" [frente] %d", q->front_id);
+    printf("FILA [frente =  %d]:", q->front_id);
 
     for(counter = 0; counter < q->size; counter++){
-        printf(" [%d] ", counter);
-        printf("%d ", actual->id);
+        printf(" [pos %d]: %d", counter, actual->id);
         actual = actual->next;
     }
     printf("\n");
