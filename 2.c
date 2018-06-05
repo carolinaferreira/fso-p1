@@ -1,4 +1,4 @@
-/* gcc -Wall -ansi -pthread -lrt -lm -std=c99 2.c */
+/* gcc -Wall -ansi -std=c99 2.c -lm -lrt -pthread */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,16 +9,15 @@
 
 #include "queue.h"
 
-#define NUM_STUDENTS 45
 #define MAX_HELPS 3
-#define CHAIRS (NUM_STUDENTS / 2.0)
-#define AE_PLANNED_HELPS (NUM_STUDENTS * MAX_HELPS)
 #define MAX_SLEEP_TIME 2
+#define MAX_STUDENTS 40
+#define MIN_STUDENTS 3
 
 int MAX_CHAIRS = 0;
-
-pthread_t STUDENTS[NUM_STUDENTS];
-pthread_t AE;
+int NUM_STUDENTS = 0;
+int CHAIRS = 0;
+int AE_PLANNED_HELPS = 0;
 
 sem_t SEM_AE_HELPING;
 sem_t SEM_AE_READY;
@@ -36,7 +35,7 @@ void * ae_func(void* arg){
 
   while(helps_given < AE_PLANNED_HELPS){
     int random_time = (rand() % MAX_SLEEP_TIME) + 1;
-    
+
     /* Problems with developing a better solution for 'sleep' */
     printf("AE: Dormindo ou esperando...\n");
     sem_wait(&SEM_STUDENTS);
@@ -56,7 +55,7 @@ void * ae_func(void* arg){
       printf("AE: Depois de chamar -> ");
       print_queue(chairs_queue);
       pthread_mutex_unlock(&mutex_queue_access);
-      
+
       /* Waiting for student */
       sem_post(&SEM_AE_READY);
       sem_wait(&SEM_STUDENT_READY);
@@ -71,7 +70,7 @@ void * ae_func(void* arg){
       helps_given++;
 
       /* Waiting for student to leave room */
-      sem_wait(&SEM_STUDENT_LEAVING);    
+      sem_wait(&SEM_STUDENT_LEAVING);
     } else {
       pthread_mutex_unlock(&mutex_queue_access);
     }
@@ -142,6 +141,11 @@ void * student_func(void* arg){
   pthread_exit((void*) 0);
 };
 
+void initilize_random(){
+  NUM_STUDENTS = (rand() % (MAX_STUDENTS + 1 - MIN_STUDENTS)) + MIN_STUDENTS;;
+  CHAIRS =  (NUM_STUDENTS / 2.0);
+  AE_PLANNED_HELPS = (NUM_STUDENTS * MAX_HELPS);
+}
 
 int main(int argc, char * argv[]){
   /* Pthread basic info initialization */
@@ -159,8 +163,12 @@ int main(int argc, char * argv[]){
 
   /* Random seed config */
   srand(time(NULL));
+  initilize_random();
   MAX_CHAIRS = (int) round(CHAIRS);
   printf("MAIN: MAX_CHAIRS %d\n", MAX_CHAIRS);
+  printf("MAIN: NUM_STUDENTS %d\n", NUM_STUDENTS);
+  pthread_t STUDENTS[NUM_STUDENTS];
+  pthread_t AE;
 
   /* Queue initialization */
   pthread_mutex_init(&mutex_queue_access, NULL);
