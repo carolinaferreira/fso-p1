@@ -17,6 +17,7 @@ struct Node * create_node(int id){
     struct Node * new_node = (struct Node *)malloc(sizeof(struct Node));
     new_node->previous = NULL;
     new_node->next = NULL;
+    new_node->id = id;
 
     return new_node;
 }
@@ -83,4 +84,18 @@ void clear_queue(struct Queue * q){
     for(counter = 0; counter < max_size; counter++){
         pop_q(q);
     }
+}
+
+void print_queue(struct Queue * q){
+    int counter = 0;
+    struct Node * actual = q->front;
+    printf("FILA: ");
+    printf(" [frente] %d", q->front_id);
+
+    for(counter = 0; counter < q->size; counter++){
+        printf(" [%d] ", counter);
+        printf("%d ", actual->id);
+        actual = actual->next;
+    }
+    printf("\n");
 }

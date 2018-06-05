@@ -1,18 +1,21 @@
-/* gcc -Wall -ansi -pthread -lrt 2.c*/
+/* gcc -Wall -ansi -pthread -lrt -lm -std=c99 2.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <pthread.h>
 #include <semaphore.h>
 
 #include "queue.h"
 
-#define NUM_STUDENTS 3
-#define MAX_CHAIRS (int) (NUM_STUDENTS/2)
+#define NUM_STUDENTS 45
 #define MAX_HELPS 3
+#define CHAIRS (NUM_STUDENTS / 2.0)
 #define AE_PLANNED_HELPS (NUM_STUDENTS * MAX_HELPS)
 #define MAX_SLEEP_TIME 2
+
+int MAX_CHAIRS = 0;
 
 pthread_t STUDENTS[NUM_STUDENTS];
 pthread_t AE;
@@ -27,9 +30,6 @@ sem_t aeChair;
 
 pthread_mutex_t mutex_queue_access;
 struct Queue * chairs_queue;
-pthread_mutex_t mutex_free_chairs;
-
-int free_chairs = MAX_CHAIRS;
 
 void * ae_func(void* arg){
   int helps_given = 0;
@@ -37,6 +37,11 @@ void * ae_func(void* arg){
   while(helps_given < AE_PLANNED_HELPS){
     int random_time = (rand() % MAX_SLEEP_TIME) + 1;
     
+    /* Problems with developing a better solution for 'sleep' */
+    printf("AE: Dormindo ou esperando...\n");
+    sem_wait(&SEM_STUDENTS);
+    printf("AE: Acordou!\n");
+
     printf("AE: Indo conferir a fila.\n");
     pthread_mutex_lock(&mutex_queue_access);
     int actual_queue_size = chairs_queue->size;
@@ -44,8 +49,12 @@ void * ae_func(void* arg){
     if(actual_queue_size > 0){
       /* Calling the first student in the queue */
       int actual_student = chairs_queue->front_id;
+      printf("AE: Antes de chamar -> ");
+      print_queue(chairs_queue);
       pop_q(chairs_queue);
       printf("AE: Chamou o estudante %d.\n", actual_student);
+      printf("AE: Depois de chamar -> ");
+      print_queue(chairs_queue);
       pthread_mutex_unlock(&mutex_queue_access);
       
       /* Waiting for student */
@@ -64,10 +73,7 @@ void * ae_func(void* arg){
       /* Waiting for student to leave room */
       sem_wait(&SEM_STUDENT_LEAVING);    
     } else {
-      printf("AE: Olhou a fila e nao viu ninguem. Dormindo...\n");
       pthread_mutex_unlock(&mutex_queue_access);
-      sem_wait(&SEM_STUDENTS);
-      printf("AE: Foi acordado!\n");
     }
   }
 
@@ -153,7 +159,9 @@ int main(int argc, char * argv[]){
 
   /* Random seed config */
   srand(time(NULL));
-  
+  MAX_CHAIRS = (int) round(CHAIRS);
+  printf("MAIN: MAX_CHAIRS %d\n", MAX_CHAIRS);
+
   /* Queue initialization */
   pthread_mutex_init(&mutex_queue_access, NULL);
   chairs_queue = create_queue();
