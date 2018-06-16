@@ -1,15 +1,20 @@
 /*  1: gcc -Wall -ansi -O2 manager.c
-    2: ./a.out test1.txt
+    2: ./a.out addresses.txt
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 
+#include "physical_mem.h"
+
 #define BACKING_STORAGE_FILE "BACKING_STORE.bin"
 #define FRAME_SIZE 256
 #define FRAME_COUNT 256
 #define BYTE_LIMIT (FRAME_COUNT * FRAME_SIZE)
+
+/* Global variables - Easier */
+struct P_Mem * physical_memory = NULL;
 
 void showbits(unsigned int x)
 {
@@ -58,6 +63,9 @@ int main(int argc, char *argv[]){
         perror("Aconteceu um erro");
         return -1;
     }
+
+    /* Preparing memories */
+    physical_memory = create_p_mem(FRAME_COUNT);
 
     /* Reading file */
     map_addresses(file_addresses);
