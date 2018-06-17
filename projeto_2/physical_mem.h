@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-
 #include "../projeto_1/queue.h"
+#pragma once
 
 #define INVALID_ADDRESS -1
 
@@ -55,7 +55,7 @@ struct P_Mem * create_p_mem(unsigned int frame_count){
         new_mem->mem_size = frame_count;
         new_mem->available_frames = create_queue();
         new_mem->removal_order = create_queue();
-        
+
         initialize_frame_list(new_mem, frame_count);
     }
 
@@ -63,7 +63,7 @@ struct P_Mem * create_p_mem(unsigned int frame_count){
 }
 
 /* This function is responsible for adding a page to memory */
-/* Output: Int value which the page was loaded */ 
+/* Output: Int value which the page was loaded */
 int load_page(struct P_Mem * mem, unsigned int v_address, unsigned char * data){
     int page_position = INVALID_ADDRESS;
 
@@ -71,7 +71,7 @@ int load_page(struct P_Mem * mem, unsigned int v_address, unsigned char * data){
         printf("LOAD PAGE: Nao e possivel carregar dados nulos!\n");
         return -1;
     }
-    
+
     if(mem->available_frames->size > 0){
         /* Read first available index then pop available queue */
         page_position = mem->available_frames->front_id;
@@ -84,12 +84,10 @@ int load_page(struct P_Mem * mem, unsigned int v_address, unsigned char * data){
 
     /* Adding new page to removal order */
     push_q(mem->removal_order, page_position);
-    
+
     /* Updating the frame with the new page */
     mem->frames[page_position].data = data;
     mem->frames[page_position].virtual_address = v_address;
 
     return page_position;
 }
-
-

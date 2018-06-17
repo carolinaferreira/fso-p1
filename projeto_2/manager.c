@@ -1,5 +1,5 @@
 /*  1: gcc -Wall -ansi -O2 manager.c
-    2: c
+    2: ./a.out addresses.txt
 */
 
 #include <stdio.h>
@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include "physical_mem.h"
+#include "tlb.h"
 
 #define BACKING_STORAGE_FILE "BACKING_STORE.bin"
 #define FRAME_SIZE 256
@@ -27,6 +28,7 @@ FILE * file_storage = NULL;
 
 struct P_Mem * physical_memory = NULL;
 unsigned int page_table[PAGE_COUNT];
+struct TLB *  tlb =  NULL;
 
 unsigned char request_data(unsigned int page, unsigned int offset){
     unsigned int location = page_table[page];
@@ -35,11 +37,11 @@ unsigned char request_data(unsigned int page, unsigned int offset){
     if(location == -1){
         printf("REQUEST DATA: Pagina %u ainda nao esta na memoria. Buscando...\n", page);
         unsigned char * loaded_data = loadPageFromBack(file_storage, page);
-        
+
         /* Loads and updates page_table */
         page_table[page] = load_page(physical_memory, page, loaded_data);
         location = page_table[page];
-        
+
         printf("REQUEST DATA: Pagina %u carregada no frame %u!\n", page, location);
     }
 
@@ -74,6 +76,9 @@ void map_addresses(FILE * addresses, FILE * backingstore){
 
             unsigned char page_char =  request_data(id_page, offset_page);
             printf("MAP ADDRESS - Char: %c - ASCII: %u\n", page_char, (unsigned int)page_char);
+
+            /*unsigned char tlb_page_char =  tlb_request(tlb, id_page, offset_page);
+            printf("TLB - MAP ADDRESS - Char: %c - ASCII: %u\n", tlb_page_char, (unsigned int)page_char);*/
         }
 
         putchar('\n');
@@ -114,6 +119,8 @@ int main(int argc, char *argv[]){
     /* Preparing memories */
     physical_memory = create_p_mem(FRAME_COUNT);
     memset(page_table, -1, PAGE_COUNT * sizeof(unsigned int));
+
+    /*tlb = create_tlb(TLB_COUNT, physical_memory);*/
 
     /* Reading file and mapping*/
     map_addresses(file_addresses, file_storage);
