@@ -67,6 +67,11 @@ struct P_Mem * create_p_mem(unsigned int frame_count){
 int load_page(struct P_Mem * mem, unsigned int v_address, unsigned char * data){
     int page_position = INVALID_ADDRESS;
 
+    if(data == NULL){
+        printf("LOAD PAGE: Nao e possivel carregar dados nulos!\n");
+        return -1;
+    }
+    
     if(mem->available_frames->size > 0){
         /* Read first available index then pop available queue */
         page_position = mem->available_frames->front_id;
