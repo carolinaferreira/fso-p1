@@ -6,6 +6,7 @@
 
 #define INVALID_ADDRESS -1
 
+/* Data definitions */
 struct Frame {
     unsigned int virtual_address;
     unsigned char * data;
@@ -18,6 +19,7 @@ struct P_Mem {
     struct Frame * frames;
 };
 
+/* This functions creates a 'blank' frame data type */
 struct Frame create_frame(int v_address, unsigned char * data){
     struct Frame * new_frame = NULL;
 
@@ -31,12 +33,13 @@ struct Frame create_frame(int v_address, unsigned char * data){
     return * new_frame;
 }
 
+/* This function creates an array of 'blank' frames and returns the array's address */
 void initialize_frame_list(struct P_Mem * mem, unsigned int frame_count){
     struct Frame * new_array = NULL;
     new_array = (struct Frame *)malloc(sizeof(struct Frame) * frame_count);
 
     if(new_array != NULL){
-        int counter = 0;
+        unsigned int counter = 0;
         for(counter = 0; counter < frame_count; counter++){
             new_array[counter] = create_frame(INVALID_ADDRESS, NULL);
             push_q(mem->available_frames, counter);
@@ -46,6 +49,7 @@ void initialize_frame_list(struct P_Mem * mem, unsigned int frame_count){
     mem->frames = new_array;
 }
 
+/* This function creates a 'blank' main memory */
 struct P_Mem * create_p_mem(unsigned int frame_count){
     struct P_Mem * new_mem = NULL;
 

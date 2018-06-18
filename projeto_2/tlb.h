@@ -34,6 +34,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
 void push_tlb(struct TLB * tlb, unsigned int page, unsigned int frame);
 void get_statistics(struct TLB * tlb);
 
+/* This function creates a 'blank' pair data type */
 struct Pair create_pair(int page, int frame){
     struct Pair * new_pair = NULL;
 
@@ -49,13 +50,13 @@ struct Pair create_pair(int page, int frame){
     return * new_pair;
 }
 
-
+/* This function creates an array of TLB entries (Pair data type) and returns the address */
 struct Pair * initialize_pair_entries(unsigned int tlb_size){
     struct Pair * new_array = NULL;
     new_array = (struct Pair *)malloc(sizeof(struct Pair) * tlb_size);
 
     if(new_array != NULL){
-        int counter = 0;
+        unsigned int counter = 0;
         for(counter = 0; counter < tlb_size; counter++){
             new_array[counter] = create_pair(INVALID_ADDRESS, INVALID_ADDRESS);
         }
@@ -64,6 +65,7 @@ struct Pair * initialize_pair_entries(unsigned int tlb_size){
     return new_array;
 }
 
+/* This function creates a 'blank' TLB */
 struct TLB * create_tlb(struct P_Mem *  mem, unsigned int * page_table, FILE * storage, unsigned int tlb_size){
     struct TLB * new_tlb = NULL;
     new_tlb = (struct TLB *)malloc(sizeof(struct TLB));
@@ -87,7 +89,8 @@ struct TLB * create_tlb(struct P_Mem *  mem, unsigned int * page_table, FILE * s
     return new_tlb;
 }
 
-/* Return character*/
+/* This functions search for an address in TLB. If not found, loads the data in the main memory. Then,
+   the function returns the requested char value */
 unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offset){
   int location = -1;
 
@@ -95,9 +98,9 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   tlb->total++;
 
   /* Linear search in TLB entries - Not sorted */
-  int counter = 0;
+  unsigned int counter = 0;
   for(counter = 0; counter < tlb->tlb_size; counter++){
-    if(tlb->entries[counter].page == page){
+    if((unsigned int)tlb->entries[counter].page == page){
       printf("TLB REQ: Pagina %u esta no TLB!\n", page);
       location = tlb->entries[counter].frame;
       break;
@@ -105,7 +108,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   }
 
   /* If not in TLB, check if it's loaded in page_table */
-  if(location == -1 && tlb->page_table[page] != -1){
+  if(location == -1 && (int)tlb->page_table[page] != -1){
     printf("TLB REQ: Pagina %u nao esta no TLB! - Encontrado na page_table com frame %u!\n",
       page, tlb->page_table[page]);
 
@@ -113,7 +116,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
     location = tlb->page_table[page];
     push_tlb(tlb, page, location);
     printf("TLB REQ: Pagina %u foi carregada no TLB!\n", page);
-  } else if(location == -1 && tlb->page_table[page] == -1){
+  } else if(location == -1 && (int)tlb->page_table[page] == -1){
     printf("TLB REQ: Pagina %u nao esta no TLB! - Nao encontrado na page_table. Necessario carregar.\n",
       page);
     
@@ -137,10 +140,11 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   return tlb->mem->frames[location].data[offset];
 }
 
+/* This function pushes an address into the TLB, even of TLB is full */
 void push_tlb(struct TLB * tlb, unsigned int page, unsigned int frame){
   unsigned int new_index = -1;
 
-  if(tlb->entries_count < tlb->tlb_size){
+  if((unsigned int)tlb->entries_count < tlb->tlb_size){
     /* Still not full. Just add */
     new_index = tlb->entries_count;
   } else {
@@ -155,6 +159,7 @@ void push_tlb(struct TLB * tlb, unsigned int page, unsigned int frame){
     push_q(tlb->removal_order, new_index);
 }
 
+/* This function prints the TLB hit/miss statistics */
 void get_statistics(struct TLB * tlb){
   printf("\nTotal de lookup no TLB: %u\n", tlb->total);
 

@@ -21,16 +21,18 @@
 unsigned char direct_request(unsigned int page, unsigned int offset);
 void map_addresses(FILE * addresses, FILE * backingstore);
 
-/* Global variables - Easier */
+/* Global file variables */
 FILE * file_addresses = NULL;
 FILE * file_storage = NULL;
 
+/* Global memory variables */
 struct P_Mem * physical_memory = NULL;
 struct TLB *  tlb =  NULL;
 unsigned int page_table[PAGE_COUNT];
 
+/* This function makes a request directly to the main memory and return the address' char value */
 unsigned char direct_request(unsigned int page, unsigned int offset){
-    unsigned int location = page_table[page];
+    int location = page_table[page];
 
     /* First, check if the data is loaded in memory */
     if(location == -1){
@@ -50,6 +52,7 @@ unsigned char direct_request(unsigned int page, unsigned int offset){
     return physical_memory->frames[location].data[offset];
 }
 
+/* This function reads the addresses.txt file and uses a request function for each address read */
 void map_addresses(FILE * addresses, FILE * backingstore){
     while(!feof(addresses)){
         unsigned int adr = 0;

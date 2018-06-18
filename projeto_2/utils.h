@@ -3,6 +3,7 @@
 
 #pragma once
 
+/* This function prints a int in its binary form. 16 bits */
 void showbits(unsigned int x){
     int i;
     for(i=(sizeof(unsigned int) * 4)-1; i>=0; i--)
@@ -11,6 +12,8 @@ void showbits(unsigned int x){
     printf("\n");
 }
 
+/* This function is resposible for reading a entire page from the backing_store file and returns the page
+    char array */
 unsigned char * loadPageFromBack(FILE * file, int id_page, int frame_size){
     if(fseek(file,id_page * frame_size, SEEK_SET) != 0){
       printf("LOAD PAGE %d: FSEEK FALHOU!\n", id_page);
