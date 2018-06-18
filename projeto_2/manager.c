@@ -6,20 +6,19 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+
 #include "physical_mem.h"
+#include "utils.h"
 #include "tlb.h"
 
 #define BACKING_STORAGE_FILE "BACKING_STORE.bin"
 #define FRAME_SIZE 256
 #define FRAME_COUNT 256
-#define BYTE_LIMIT (FRAME_COUNT * FRAME_SIZE)
 #define PAGE_COUNT 256
 #define TLB_COUNT 16
 
 /* Function prototype */
-void showbits(unsigned int x);
-unsigned char * loadPageFromBack(FILE * file, int id_page);
-unsigned char request_data(unsigned int page, unsigned int offset);
+unsigned char direct_request(unsigned int page, unsigned int offset);
 void map_addresses(FILE * addresses, FILE * backingstore);
 
 /* Global variables - Easier */
@@ -27,16 +26,16 @@ FILE * file_addresses = NULL;
 FILE * file_storage = NULL;
 
 struct P_Mem * physical_memory = NULL;
-unsigned int page_table[PAGE_COUNT];
 struct TLB *  tlb =  NULL;
+unsigned int page_table[PAGE_COUNT];
 
-unsigned char request_data(unsigned int page, unsigned int offset){
+unsigned char direct_request(unsigned int page, unsigned int offset){
     unsigned int location = page_table[page];
 
     /* First, check if the data is loaded in memory */
     if(location == -1){
         printf("REQUEST DATA: Pagina %u ainda nao esta na memoria. Buscando...\n", page);
-        unsigned char * loaded_data = loadPageFromBack(file_storage, page);
+        unsigned char * loaded_data = loadPageFromBack(file_storage, page, FRAME_SIZE);
 
         /* Loads and updates page_table */
         page_table[page] = load_page(physical_memory, page, loaded_data);
@@ -47,15 +46,8 @@ unsigned char request_data(unsigned int page, unsigned int offset){
 
     /* Translates and get the needed char */
     printf("REQUEST DATA: Pagina %u traduzida no frame %u!\n", page, location);
+    printf("REQUEST DATA: Endereço %p\n", &physical_memory->frames[location].data[offset]);
     return physical_memory->frames[location].data[offset];
-}
-
-void showbits(unsigned int x){
-    int i;
-    for(i=(sizeof(unsigned int) * 4)-1; i>=0; i--)
-            (x&(1u<<i))?putchar('1'):putchar('0');
-
-    printf("\n");
 }
 
 void map_addresses(FILE * addresses, FILE * backingstore){
@@ -74,29 +66,15 @@ void map_addresses(FILE * addresses, FILE * backingstore){
             printf("Offset da pagina: %d - ", offset_page);
             showbits(offset_page);
 
-            unsigned char page_char =  request_data(id_page, offset_page);
-            printf("MAP ADDRESS - Char: %c - ASCII: %u\n", page_char, (unsigned int)page_char);
+            /* unsigned char page_char =  direct_request(id_page, offset_page);
+            printf("MAP ADDRESS - Char: %c - ASCII: %u\n", page_char, (unsigned int)page_char);*/
 
-            /*unsigned char tlb_page_char =  tlb_request(tlb, id_page, offset_page);
-            printf("TLB - MAP ADDRESS - Char: %c - ASCII: %u\n", tlb_page_char, (unsigned int)page_char);*/
+            unsigned char tlb_page_char =  tlb_request(tlb, id_page, offset_page);
+            printf("Char: %c - ASCII: %u\n", tlb_page_char, (unsigned int)tlb_page_char);
         }
 
         putchar('\n');
     }
-}
-
-unsigned char * loadPageFromBack(FILE * file, int id_page){
-    if(fseek(file,id_page * FRAME_SIZE, SEEK_SET) != 0){
-      printf("LOAD PAGE %d: FSEEK FALHOU!\n", id_page);
-      return NULL;
-    }
-
-    unsigned char * buffer = (unsigned char * ) malloc(sizeof(unsigned char) * FRAME_SIZE);
-    if(fread(buffer, sizeof(unsigned char), FRAME_SIZE, file) == 0){
-      printf("LOAD PAGE %d: FREAD FALHOU!\n", id_page);
-      return NULL;
-    }
-    return buffer;
 }
 
 int main(int argc, char *argv[]){
@@ -118,9 +96,9 @@ int main(int argc, char *argv[]){
 
     /* Preparing memories */
     physical_memory = create_p_mem(FRAME_COUNT);
+    tlb = create_tlb(physical_memory, page_table, file_storage, TLB_COUNT);
     memset(page_table, -1, PAGE_COUNT * sizeof(unsigned int));
 
-    /*tlb = create_tlb(TLB_COUNT, physical_memory);*/
 
     /* Reading file and mapping*/
     map_addresses(file_addresses, file_storage);
@@ -128,5 +106,9 @@ int main(int argc, char *argv[]){
     /* Closing files */
     fclose(file_addresses);
     fclose(file_storage);
+
+    /* Statistics */
+    get_statistics(tlb);
+    
     return 0;
 }

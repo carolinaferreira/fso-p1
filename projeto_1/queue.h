@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#pragma once
+
 struct Node{
     int id;
     struct Node * previous;
