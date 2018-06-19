@@ -141,8 +141,10 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   /* Return the char */
   unsigned frame_begin_byte = location * FRAME_COUNT;
   unsigned frame_end_byte = frame_begin_byte + FRAME_SIZE;
+  unsigned frame_value = frame_begin_byte + offset;
   printf("TLB REQ: Pagina %u foi traduzida para o frame %u (%d bytes - %d bytes)!\n",
     page, location, frame_begin_byte, frame_end_byte);
+  printf("TLB REQ: Endereco fisico %u\n", frame_value);
   return tlb->mem->frames[location].data[offset];
 }
 
