@@ -17,6 +17,7 @@ struct Pair {
 
 struct TLB {
   unsigned int tlb_size, total, misses, hits;
+  unsigned int page_fault;
   int entries_count;
 
   unsigned int * page_table;
@@ -76,6 +77,7 @@ struct TLB * create_tlb(struct P_Mem *  mem, unsigned int * page_table, FILE * s
       new_tlb->misses = 0;
       new_tlb->hits = 0;
       new_tlb->entries_count = 0;
+      new_tlb->page_fault = 0;
       new_tlb->tlb_size = tlb_size;
 
       new_tlb->mem = mem;
@@ -120,6 +122,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
     printf("TLB REQ: Pagina %u foi carregada no TLB!\n", page);
   } else if(location == -1 && (int)tlb->page_table[page] == -1){
     tlb->misses++;
+    tlb->page_fault++;
     printf("TLB REQ: Pagina %u nao esta no TLB! - Nao encontrado na page_table. Necessario carregar.\n",
       page);
 
@@ -168,6 +171,8 @@ void get_statistics(struct TLB * tlb){
 
   double miss_rate = ((double)tlb->misses / (double)tlb->total)*100.0;
   double hit_rate = ((double)tlb->hits / (double)tlb->total)*100.0;
-  printf("Taxa de acerto de paginas: %.2lf%%\n", miss_rate);
-  printf("Taxa de erro de paginas: %.2lf%%\n", hit_rate);
+  double fault_rate = ((double)tlb->page_fault / (double)tlb->total)*100.0;
+  printf("Taxa de acerto de paginas (TLB): %.2lf%%\n", hit_rate);
+  printf("Taxa de page fault: %.2lf%%\n", fault_rate);
+  printf("Taxa de erro de paginas (TLB): %.2lf%%\n", miss_rate);
 }
