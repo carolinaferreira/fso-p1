@@ -101,6 +101,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   unsigned int counter = 0;
   for(counter = 0; counter < tlb->tlb_size; counter++){
     if((unsigned int)tlb->entries[counter].page == page){
+      tlb->hits++;
       printf("TLB REQ: Pagina %u esta no TLB!\n", page);
       location = tlb->entries[counter].frame;
       break;
@@ -109,6 +110,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
 
   /* If not in TLB, check if it's loaded in page_table */
   if(location == -1 && (int)tlb->page_table[page] != -1){
+    tlb->misses++;
     printf("TLB REQ: Pagina %u nao esta no TLB! - Encontrado na page_table com frame %u!\n",
       page, tlb->page_table[page]);
 
@@ -117,15 +119,16 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
     push_tlb(tlb, page, location);
     printf("TLB REQ: Pagina %u foi carregada no TLB!\n", page);
   } else if(location == -1 && (int)tlb->page_table[page] == -1){
+    tlb->misses++;
     printf("TLB REQ: Pagina %u nao esta no TLB! - Nao encontrado na page_table. Necessario carregar.\n",
       page);
-    
+
     /* Page must be loaded */
     unsigned char * loaded_data = loadPageFromBack(tlb->storage, page, FRAME_SIZE);
 
     /* Loads and updates page_table */
     tlb->page_table[page] = load_page(tlb->mem, page, loaded_data);
-    
+
     /* Updates the tlb */
     location = tlb->page_table[page];
     push_tlb(tlb, page, location);
@@ -135,7 +138,7 @@ unsigned char tlb_request(struct TLB * tlb, unsigned int page, unsigned int offs
   /* Return the char */
   unsigned frame_begin_byte = location * FRAME_COUNT;
   unsigned frame_end_byte = frame_begin_byte + FRAME_SIZE;
-  printf("TLB REQ: Pagina %u foi traduzida para o frame %u (%d bytes - %d bytes)!\n", 
+  printf("TLB REQ: Pagina %u foi traduzida para o frame %u (%d bytes - %d bytes)!\n",
     page, location, frame_begin_byte, frame_end_byte);
   return tlb->mem->frames[location].data[offset];
 }
@@ -163,7 +166,8 @@ void push_tlb(struct TLB * tlb, unsigned int page, unsigned int frame){
 void get_statistics(struct TLB * tlb){
   printf("\nTotal de lookup no TLB: %u\n", tlb->total);
 
-  double miss_rate = 0.0, hit_rate = 0.0;
-  printf("Taxa de acerto de paginas: %lf\n", miss_rate);
-  printf("Taxa de erro de paginas: %lf\n", hit_rate);
+  double miss_rate = ((double)tlb->misses / (double)tlb->total)*100.0;
+  double hit_rate = ((double)tlb->hits / (double)tlb->total)*100.0;
+  printf("Taxa de acerto de paginas: %.2lf%%\n", miss_rate);
+  printf("Taxa de erro de paginas: %.2lf%%\n", hit_rate);
 }
